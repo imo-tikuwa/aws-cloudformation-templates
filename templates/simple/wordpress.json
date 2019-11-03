@@ -69,8 +69,8 @@
             ],
             "ConstraintDescription": "must be a valid EC2 instance type."
         },
-        "SSHLocation": {
-            "Description": "The IP address range that can be used to SSH to the EC2 instances",
+        "AccessAllowIP": {
+            "Description": "The IP address range that can be used to SSH and HTTP to the EC2 instances",
             "Type": "String",
             "MinLength": "9",
             "MaxLength": "18",
@@ -521,20 +521,22 @@
         "WebServerSecurityGroup": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
-                "GroupDescription": "Enable HTTP access via port 80 locked down to the load balancer + SSH access",
+                "GroupDescription": "SecurityGroup created by CloudFormation",
                 "SecurityGroupIngress": [
                     {
                         "IpProtocol": "tcp",
                         "FromPort": "80",
                         "ToPort": "80",
-                        "CidrIp": "0.0.0.0/0"
+                        "CidrIp": {
+                            "Ref": "AccessAllowIP"
+                        }
                     },
                     {
                         "IpProtocol": "tcp",
                         "FromPort": "22",
                         "ToPort": "22",
                         "CidrIp": {
-                            "Ref": "SSHLocation"
+                            "Ref": "AccessAllowIP"
                         }
                     }
                 ]
@@ -547,6 +549,7 @@
                     "configSets": {
                         "wordpress_install": [
                             "install_cfn",
+                            "init_jp_setting",
                             "install_wordpress",
                             "configure_wordpress"
                         ]
@@ -617,20 +620,49 @@
                             }
                         }
                     },
+                    "init_jp_setting": {
+                        "files": {
+                            "/tmp/jp-setting": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "yum -y update\n",
+                                            "sed -i \"s/ZONE=\\\"UTC\\\"/ZONE=\\\"Asia\\/Tokyo\\\"/\" /etc/sysconfig/clock\n",
+                                            "/bin/cp -f /usr/share/zoneinfo/Japan /etc/localtime\n",
+                                            "sed -i \"s/en_US\\.UTF-8/ja_JP\\.UTF-8/\" /etc/sysconfig/i18n\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000500",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        },
+                        "commands": {
+                            "01_execute_init_jp_setting": {
+                                "command": "/tmp/jp-setting",
+                                "cwd": "~"
+                            }
+                        }
+                    },
                     "install_wordpress": {
                         "packages": {
                             "yum": {
-                                "php": [],
-                                "php-mysql": [],
-                                "mysql": [],
-                                "mysql-server": [],
-                                "mysql-devel": [],
-                                "mysql-libs": [],
-                                "httpd": []
+                                "php73": [],
+                                "php73-mbstring": [],
+                                "php73-mysqlnd": [],
+                                "php73-gd": [],
+                                "mysql57": [],
+                                "mysql57-server": [],
+                                "mysql57-devel": [],
+                                "mysql57-libs": [],
+                                "httpd24": []
                             }
                         },
                         "sources": {
-                            "/var/www/html": "http://wordpress.org/latest.tar.gz"
+                            "/var/www/html": "https://ja.wordpress.org/latest-ja.tar.gz"
                         },
                         "files": {
                             "/tmp/setup.mysql": {
@@ -690,7 +722,18 @@
                                             {
                                                 "Ref": "DBPassword"
                                             },
-                                            "'/g\" wp-config.php\n"
+                                            "'/g\" wp-config.php\n",
+                                            "\n",
+                                            "# salt change\n",
+                                            "SALTS=$(curl -s https://api.wordpress.org/secret-key/1.1/salt/)\n",
+                                            "while read -r SALT; do\n",
+                                            "SEARCH=\"define('$(echo \"$SALT\" | cut -d \"'\" -f 2)\"\n",
+                                            "REPLACE=$(echo \"$SALT\" | cut -d \"'\" -f 4)\n",
+                                            "sed -i \"/^$SEARCH/s/put your unique phrase here/$(echo $REPLACE | sed -e 's/\\\\/\\\\\\\\/g' -e 's/\\//\\\\\\//g' -e 's/&/\\\\\\&/g')/\" wp-config.php\n",
+                                            "done <<< \"$SALTS\"\n",
+                                            "\n",
+                                            "# apache setting\n",
+                                            "chown -R apache: /var/www/html/wordpress\n"
                                         ]
                                     ]
                                 },
@@ -871,6 +914,48 @@
                 ]
             },
             "Description": "WordPress Website"
+        },
+        "DBUser": {
+            "Value": {
+                "Ref": "DBUser"
+            }
+        },
+        "DBPassword": {
+            "Value": {
+                "Ref": "DBPassword"
+            }
+        },
+        "DBRootPassword": {
+            "Value": {
+                "Ref": "DBRootPassword"
+            }
+        }
+    },
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Instance Setting"
+                    },
+                    "Parameters": [
+                        "InstanceType",
+                        "AccessAllowIP",
+                        "KeyName"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Database Setting"
+                    },
+                    "Parameters": [
+                        "DBName",
+                        "DBUser",
+                        "DBPassword",
+                        "DBRootPassword"
+                    ]
+                }
+            ]
         }
     }
 }
