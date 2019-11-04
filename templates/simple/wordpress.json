@@ -144,6 +144,14 @@
                 },
                 ""
             ]
+        },
+        "WordPressInstallDirectoryNameIsDefault": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressInstallDirectoryName"
+                },
+                "wordpress"
+            ]
         }
     },
     "Mappings": {
@@ -766,11 +774,24 @@
                                                         "Fn::Join": [
                                                             "",
                                                             [
-                                                                "mv wordpress ",
                                                                 {
-                                                                    "Ref": "WordPressInstallDirectoryName"
+                                                                    "Fn::If": [
+                                                                        "WordPressInstallDirectoryNameIsDefault",
+                                                                        "",
+                                                                        {
+                                                                            "Fn::Join": [
+                                                                                "",
+                                                                                [
+                                                                                    "mv wordpress ",
+                                                                                    {
+                                                                                        "Ref": "WordPressInstallDirectoryName"
+                                                                                    },
+                                                                                    "\n"
+                                                                                ]
+                                                                            ]
+                                                                        }
+                                                                    ]
                                                                 },
-                                                                "\n",
                                                                 "cd ",
                                                                 {
                                                                     "Ref": "WordPressInstallDirectoryName"
