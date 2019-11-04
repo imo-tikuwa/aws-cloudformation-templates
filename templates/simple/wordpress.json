@@ -564,6 +564,14 @@
                     },
                     {
                         "IpProtocol": "tcp",
+                        "FromPort": "443",
+                        "ToPort": "443",
+                        "CidrIp": {
+                            "Ref": "AccessAllowIP"
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
                         "FromPort": "22",
                         "ToPort": "22",
                         "CidrIp": {
@@ -689,7 +697,8 @@
                                 "mysql57-server": [],
                                 "mysql57-devel": [],
                                 "mysql57-libs": [],
-                                "httpd24": []
+                                "httpd24": [],
+                                "mod24_ssl": []
                             }
                         },
                         "sources": {
@@ -983,7 +992,7 @@
                 "Fn::Join": [
                     "",
                     [
-                        "http://",
+                        "https://",
                         {
                             "Fn::GetAtt": [
                                 "WebServer",
