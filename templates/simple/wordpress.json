@@ -2,6 +2,22 @@
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "AWS CloudFormation Sample Template WordPress_Single_Instance: WordPress is web software you can use to create a beautiful website or blog. This template installs WordPress with a local MySQL database for storage. It demonstrates using the AWS CloudFormation bootstrap scripts to deploy WordPress. **WARNING** This template creates an Amazon EC2 instance. You will be billed for the AWS resources used if you create a stack from this template.",
     "Parameters": {
+        "WebServerVolumeSize": {
+            "Description": "input EC2 volume size(min:8GB, max:1024GB)",
+            "Type": "Number",
+            "MinValue": "8",
+            "MaxValue": "1024",
+            "Default": "8"
+        },
+        "WebServerVolumeType": {
+            "Description": "select EC2 volume type (gp2:SSD, standard:HDD)",
+            "Type": "String",
+            "Default": "standard",
+            "AllowedValues": [
+                "gp2",
+                "standard"
+            ]
+        },
         "KeyName": {
             "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances",
             "Type": "AWS::EC2::KeyPair::KeyName",
@@ -826,6 +842,20 @@
                 }
             },
             "Properties": {
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": "true",
+                            "VolumeSize": {
+                                "Ref": "WebServerVolumeSize"
+                            },
+                            "VolumeType": {
+                                "Ref": "WebServerVolumeType"
+                            }
+                        }
+                    }
+                ],
                 "ImageId": {
                     "Fn::FindInMap": [
                         "AWSRegionArch2AMI",
@@ -940,8 +970,8 @@
                     },
                     "Parameters": [
                         "InstanceType",
-                        "AccessAllowIP",
-                        "KeyName"
+                        "WebServerVolumeType",
+                        "WebServerVolumeSize"
                     ]
                 },
                 {
@@ -953,6 +983,15 @@
                         "DBUser",
                         "DBPassword",
                         "DBRootPassword"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Other Setting"
+                    },
+                    "Parameters": [
+                        "AccessAllowIP",
+                        "KeyName"
                     ]
                 }
             ]
