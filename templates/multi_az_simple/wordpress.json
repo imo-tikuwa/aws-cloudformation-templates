@@ -79,8 +79,8 @@
             ],
             "ConstraintDescription": "must be a valid EC2 instance type."
         },
-        "SSHLocation": {
-            "Description": "The IP address range that can be used to SSH to the EC2 instances",
+        "AccessAllowIP": {
+            "Description": "The IP address range that can be used to SSH and HTTP to the EC2 instances",
             "Type": "String",
             "MinLength": "9",
             "MaxLength": "18",
@@ -178,6 +178,29 @@
             "MinValue": "5",
             "MaxValue": "1024",
             "ConstraintDescription": "must be between 5 and 1024Gb."
+        },
+        "WordPressInstallDirectoryName": {
+            "Description": "enter WordPress install directory name. If not entered, it will be installed directly under /var/www/html",
+            "Type": "String",
+            "Default": "wordpress"
+        }
+    },
+    "Conditions": {
+        "WordPressInstallDirectoryNameIsEmpty": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressInstallDirectoryName"
+                },
+                ""
+            ]
+        },
+        "WordPressInstallDirectoryNameIsDefault": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressInstallDirectoryName"
+                },
+                "wordpress"
+            ]
         }
     },
     "Mappings": {
@@ -588,6 +611,30 @@
             "Properties": {
                 "Subnets": {
                     "Ref": "Subnets"
+                },
+                "SecurityGroups": [
+                    {
+                        "Ref": "ALBSecurityGroup"
+                    }
+                ]
+            }
+        },
+        "ALBSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "SecurityGroup created by CloudFormation",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "80",
+                        "ToPort": "80",
+                        "CidrIp": {
+                            "Ref": "AccessAllowIP"
+                        }
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VpcId"
                 }
             }
         },
@@ -612,7 +659,31 @@
         "ALBTargetGroup": {
             "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
             "Properties": {
-                "HealthCheckPath": "/wordpress/wp-admin/install.php",
+                "HealthCheckPath": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            {
+                                "Fn::If": [
+                                    "WordPressInstallDirectoryNameIsEmpty",
+                                    "",
+                                    {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "/",
+                                                {
+                                                    "Ref": "WordPressInstallDirectoryName"
+                                                }
+                                            ]
+                                        ]
+                                    }
+                                ]
+                            },
+                            "/wp-admin/install.php"
+                        ]
+                    ]
+                },
                 "HealthCheckIntervalSeconds": 10,
                 "HealthCheckTimeoutSeconds": 5,
                 "HealthyThresholdCount": 2,
@@ -641,7 +712,7 @@
         "WebServerSecurityGroup": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
-                "GroupDescription": "Enable HTTP access via port 80 locked down to the load balancer + SSH access",
+                "GroupDescription": "SecurityGroup created by CloudFormation",
                 "SecurityGroupIngress": [
                     {
                         "IpProtocol": "tcp",
@@ -664,7 +735,7 @@
                         "FromPort": "22",
                         "ToPort": "22",
                         "CidrIp": {
-                            "Ref": "SSHLocation"
+                            "Ref": "AccessAllowIP"
                         }
                     }
                 ],
@@ -714,6 +785,7 @@
                     "configSets": {
                         "wordpress_install": [
                             "install_cfn",
+                            "init_jp_setting",
                             "install_wordpress"
                         ]
                     },
@@ -783,17 +855,46 @@
                             }
                         }
                     },
+                    "init_jp_setting": {
+                        "files": {
+                            "/tmp/jp-setting": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "sed -i \"s/ZONE=\\\"UTC\\\"/ZONE=\\\"Asia\\/Tokyo\\\"/\" /etc/sysconfig/clock\n",
+                                            "/bin/cp -f /usr/share/zoneinfo/Japan /etc/localtime\n",
+                                            "sed -i \"s/en_US\\.UTF-8/ja_JP\\.UTF-8/\" /etc/sysconfig/i18n\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000500",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        },
+                        "commands": {
+                            "01_execute_init_jp_setting": {
+                                "command": "/tmp/jp-setting",
+                                "cwd": "~"
+                            }
+                        }
+                    },
                     "install_wordpress": {
                         "packages": {
                             "yum": {
-                                "php": [],
-                                "php-mysql": [],
-                                "mysql": [],
-                                "httpd": []
+                                "php73": [],
+                                "php73-mbstring": [],
+                                "php73-mysqlnd": [],
+                                "php73-gd": [],
+                                "mysql57": [],
+                                "mysql57-libs": [],
+                                "httpd24": []
                             }
                         },
                         "sources": {
-                            "/var/www/html": "http://wordpress.org/latest.tar.gz"
+                            "/var/www/html": "https://ja.wordpress.org/latest-ja.tar.gz"
                         },
                         "files": {
                             "/tmp/create-wp-config": {
@@ -802,7 +903,56 @@
                                         "",
                                         [
                                             "#!/bin/bash\n",
-                                            "cp /var/www/html/wordpress/wp-config-sample.php /var/www/html/wordpress/wp-config.php\n",
+                                            "cd /var/www/html\n",
+                                            "\n",
+                                            "# wordpress move\n",
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressInstallDirectoryNameIsEmpty",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                "mv wordpress/* ./\n",
+                                                                "rm -fR wordpress/\n"
+                                                            ]
+                                                        ]
+                                                    },
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                {
+                                                                    "Fn::If": [
+                                                                        "WordPressInstallDirectoryNameIsDefault",
+                                                                        "",
+                                                                        {
+                                                                            "Fn::Join": [
+                                                                                "",
+                                                                                [
+                                                                                    "mv wordpress ",
+                                                                                    {
+                                                                                        "Ref": "WordPressInstallDirectoryName"
+                                                                                    },
+                                                                                    "\n"
+                                                                                ]
+                                                                            ]
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "cd ",
+                                                                {
+                                                                    "Ref": "WordPressInstallDirectoryName"
+                                                                },
+                                                                "\n"
+                                                            ]
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "\n",
+                                            "# create wp-config.php\n",
+                                            "cp wp-config-sample.php wp-config.php\n",
                                             "sed -i \"s/'database_name_here'/'",
                                             {
                                                 "Ref": "DBName"
@@ -825,7 +975,10 @@
                                                     "Endpoint.Address"
                                                 ]
                                             },
-                                            "'/g\" wp-config.php\n"
+                                            "'/g\" wp-config.php\n",
+                                            "\n",
+                                            "# apache setting\n",
+                                            "chown -R apache: .\n"
                                         ]
                                     ]
                                 },
@@ -837,7 +990,7 @@
                         "commands": {
                             "01_configure_wordpress": {
                                 "command": "/tmp/create-wp-config",
-                                "cwd": "/var/www/html/wordpress"
+                                "cwd": "~"
                             }
                         },
                         "services": {
@@ -942,6 +1095,7 @@
                     "Ref": "DBName"
                 },
                 "Engine": "MySQL",
+                "EngineVersion": "5.7.26",
                 "MultiAZ": {
                     "Ref": "MultiAZDatabase"
                 },
@@ -981,11 +1135,64 @@
                                 "DNSName"
                             ]
                         },
-                        "/wordpress"
+                        "/",
+                        {
+                            "Ref": "WordPressInstallDirectoryName"
+                        }
                     ]
                 ]
             },
             "Description": "WordPress Website"
+        },
+        "DBUser": {
+            "Value": {
+                "Ref": "DBUser"
+            }
+        },
+        "DBPassword": {
+            "Value": {
+                "Ref": "DBPassword"
+            }
+        }
+    },
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "EC2 Setting"
+                    },
+                    "Parameters": [
+                        "InstanceType",
+                        "VpcId",
+                        "Subnets",
+                        "WebServerCapacity",
+                        "WordPressInstallDirectoryName"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "RDS Setting"
+                    },
+                    "Parameters": [
+                        "DBClass",
+                        "DBAllocatedStorage",
+                        "MultiAZDatabase",
+                        "DBName",
+                        "DBUser",
+                        "DBPassword"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Other Setting"
+                    },
+                    "Parameters": [
+                        "AccessAllowIP",
+                        "KeyName"
+                    ]
+                }
+            ]
         }
     }
 }
