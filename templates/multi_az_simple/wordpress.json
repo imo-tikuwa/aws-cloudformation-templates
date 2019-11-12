@@ -126,6 +126,14 @@
             ],
             "ConstraintDescription": "must select a valid database instance type."
         },
+        "S3BucketName": {
+            "Description": "The S3 bucket name. used as WordPress wp-content/uploads directory.",
+            "Type": "String",
+            "MinLength": "3",
+            "MaxLength": "255",
+            "AllowedPattern": "[a-zA-Z0-9]*",
+            "ConstraintDescription": "input S3 unique bucket name. min:3, maxlength:255"
+        },
         "DBName": {
             "Default": "wordpressdb",
             "Description": "The WordPress database name",
@@ -766,14 +774,14 @@
             },
             "CreationPolicy": {
                 "ResourceSignal": {
-                    "Timeout": "PT15M"
+                    "Timeout": "PT20M"
                 }
             },
             "UpdatePolicy": {
                 "AutoScalingRollingUpdate": {
                     "MinInstancesInService": "1",
                     "MaxBatchSize": "1",
-                    "PauseTime": "PT15M",
+                    "PauseTime": "PT20M",
                     "WaitOnResourceSignals": "true"
                 }
             }
@@ -978,7 +986,78 @@
                                             "'/g\" wp-config.php\n",
                                             "\n",
                                             "# apache setting\n",
-                                            "chown -R apache: .\n"
+                                            "chown -R apache: .\n",
+                                            "\n",
+                                            "\n",
+                                            "\n",
+                                            "# aws configure\n",
+                                            "aws configure set aws_access_key_id ",
+                                            {
+                                                "Ref": "S3BucketUserAccessKey"
+                                            },
+                                            "\n",
+                                            "aws configure set aws_secret_access_key ",
+                                            {
+                                                "Fn::GetAtt": [
+                                                    "S3BucketUserAccessKey",
+                                                    "SecretAccessKey"
+                                                ]
+                                            },
+                                            "\n",
+                                            "aws configure set region ap-northeast-1\n",
+                                            "aws configure set output json\n",
+                                            "\n",
+                                            "# install golang and goofys\n",
+                                            "yum -y install golang fuse\n",
+                                            "wget https://github.com/kahing/goofys/releases/download/v0.22.0/goofys -P /usr/local/bin\n",
+                                            "chmod +x /usr/local/bin/goofys\n",
+                                            "\n",
+                                            "# create s3 mount dir\n",
+                                            "mkdir -p /var/www/html/",
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressInstallDirectoryNameIsEmpty",
+                                                    "",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                {
+                                                                    "Ref": "WordPressInstallDirectoryName"
+                                                                },
+                                                                "/"
+                                                            ]
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "wp-content/uploads\n",
+                                            "\n",
+                                            "# execute s3 mount by goofys. (48 = apache uid)\n",
+                                            "export HOME=/root\n",
+                                            "/usr/local/bin/goofys -o nonempty -o allow_other --uid=48 --gid=48 --dir-mode=0777 --file-mode=0777 --region=ap-northeast-1 ",
+                                            {
+                                                "Ref": "S3BucketName"
+                                            },
+                                            " /var/www/html/",
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressInstallDirectoryNameIsEmpty",
+                                                    "",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                {
+                                                                    "Ref": "WordPressInstallDirectoryName"
+                                                                },
+                                                                "/"
+                                                            ]
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "wp-content/uploads\n"
                                         ]
                                     ]
                                 },
@@ -1120,6 +1199,137 @@
                     }
                 ]
             }
+        },
+        "S3Bucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "BucketName": {
+                    "Ref": "S3BucketName"
+                },
+                "AccessControl": "Private"
+            }
+        },
+        "S3BucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+                "Bucket": {
+                    "Ref": "S3Bucket"
+                },
+                "PolicyDocument": {
+                    "Statement": {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:PutObject",
+                            "s3:GetObject",
+                            "s3:DeleteObject",
+                            "s3:ListBucket"
+                        ],
+                        "Resource": [
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:aws:s3:::",
+                                        {
+                                            "Ref": "S3BucketName"
+                                        },
+                                        "/*"
+                                    ]
+                                ]
+                            },
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:aws:s3:::",
+                                        {
+                                            "Ref": "S3BucketName"
+                                        }
+                                    ]
+                                ]
+                            }
+                        ],
+                        "Principal": {
+                            "AWS": {
+                                "Fn::GetAtt": [
+                                    "S3BucketUser",
+                                    "Arn"
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "S3BucketUser": {
+            "Type": "AWS::IAM::User",
+            "Properties": {
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Ref": "S3BucketName"
+                                    },
+                                    "User"
+                                ]
+                            ]
+                        },
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:s3:::",
+                                                {
+                                                    "Ref": "S3BucketName"
+                                                },
+                                                "/*"
+                                            ]
+                                        ]
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:ListBucket",
+                                        "s3:ListBucketMultipartUploads"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:s3:::",
+                                                {
+                                                    "Ref": "S3BucketName"
+                                                }
+                                            ]
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "S3BucketUserAccessKey": {
+            "Type": "AWS::IAM::AccessKey",
+            "Properties": {
+                "UserName": {
+                    "Ref": "S3BucketUser"
+                }
+            }
         }
     },
     "Outputs": {
@@ -1168,6 +1378,14 @@
                         "Subnets",
                         "WebServerCapacity",
                         "WordPressInstallDirectoryName"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "S3 Setting"
+                    },
+                    "Parameters": [
+                        "S3BucketName"
                     ]
                 },
                 {
