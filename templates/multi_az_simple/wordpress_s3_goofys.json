@@ -1215,7 +1215,8 @@
                     "Ref": "S3BucketName"
                 },
                 "AccessControl": "Private"
-            }
+            },
+            "DeletionPolicy": "Retain"
         },
         "S3BucketPolicy": {
             "Type": "AWS::S3::BucketPolicy",
