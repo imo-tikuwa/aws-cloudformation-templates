@@ -6,7 +6,7 @@
             "ParameterGroups": [
                 {
                     "Label": {
-                        "default": "Project Name Prefix"
+                        "default": "Common"
                     },
                     "Parameters": [
                         "ProjectPrefix"
