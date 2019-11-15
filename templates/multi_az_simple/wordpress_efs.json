@@ -2,15 +2,12 @@
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "AWS CloudFormation Sample Template WordPress_Multi_AZ: WordPress is web software you can use to create a beautiful website or blog. This template installs a highly-available, scalable WordPress deployment using a multi-az Amazon RDS database instance for storage. It demonstrates using the AWS CloudFormation bootstrap scripts to deploy WordPress. **WARNING** This template creates an Amazon EC2 instance, an Application Load Balancer and an Amazon RDS database instance. You will be billed for the AWS resources used if you create a stack from this template.",
     "Parameters": {
-        "VpcId": {
-            "Type": "AWS::EC2::VPC::Id",
-            "Description": "VpcId of your existing Virtual Private Cloud (VPC)",
-            "ConstraintDescription": "must be the VPC Id of an existing Virtual Private Cloud."
-        },
-        "Subnets": {
-            "Type": "List<AWS::EC2::Subnet::Id>",
-            "Description": "The list of SubnetIds in your Virtual Private Cloud (VPC). 2 or more selections recommended.",
-            "ConstraintDescription": "must be a list of at least two existing subnets associated with at least two different availability zones. They should be residing in the selected Virtual Private Cloud."
+        "ProjectPrefix": {
+            "Description": "Enter 3 to 20 single-byte alphanumeric characters (lower case). Used as a Name tag or identifier.",
+            "Type": "String",
+            "MinLength": "3",
+            "MaxLength": "20",
+            "AllowedPattern": "[a-z][a-z0-9]*"
         },
         "KeyName": {
             "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances",
@@ -164,10 +161,10 @@
             "ConstraintDescription": "must be either true or false."
         },
         "WebServerCapacity": {
-            "Default": "1",
+            "Default": "2",
             "Description": "The initial number of WebServer instances",
             "Type": "Number",
-            "MinValue": "1",
+            "MinValue": "2",
             "MaxValue": "5",
             "ConstraintDescription": "must be between 1 and 5 EC2 instances."
         },
@@ -606,15 +603,185 @@
         }
     },
     "Resources": {
+        "NewVPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": "172.31.0.0/16",
+                "EnableDnsSupport": "true",
+                "EnableDnsHostnames": "true",
+                "InstanceTenancy": "default",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-vpc"
+                        }
+                    }
+                ]
+            }
+        },
+        "InternetGateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-igw"
+                        }
+                    }
+                ]
+            }
+        },
+        "InternetGatewayAttachment": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "InternetGatewayId": {
+                    "Ref": "InternetGateway"
+                },
+                "VpcId": {
+                    "Ref": "NewVPC"
+                }
+            }
+        },
+        "PublicSubnetA": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": "ap-northeast-1a",
+                "CidrBlock": "172.31.0.0/20",
+                "VpcId": {
+                    "Ref": "NewVPC"
+                },
+                "MapPublicIpOnLaunch": "true",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-public-subnet-a"
+                        }
+                    }
+                ]
+            }
+        },
+        "PublicSubnetC": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": "ap-northeast-1c",
+                "CidrBlock": "172.31.16.0/20",
+                "VpcId": {
+                    "Ref": "NewVPC"
+                },
+                "MapPublicIpOnLaunch": "true",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-public-subnet-c"
+                        }
+                    }
+                ]
+            }
+        },
+        "PublicRouteTableA": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "NewVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-public-route-a"
+                        }
+                    }
+                ]
+            }
+        },
+        "PublicRouteTableC": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "NewVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-public-route-c"
+                        }
+                    }
+                ]
+            }
+        },
+        "PublicRouteA": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTableA"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "InternetGateway"
+                }
+            }
+        },
+        "PublicRouteC": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTableC"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "InternetGateway"
+                }
+            }
+        },
+        "PublicSubnetARouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "PublicSubnetA"
+                },
+                "RouteTableId": {
+                    "Ref": "PublicRouteTableA"
+                }
+            }
+        },
+        "PublicSubnetCRouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "PublicSubnetC"
+                },
+                "RouteTableId": {
+                    "Ref": "PublicRouteTableC"
+                }
+            }
+        },
         "ApplicationLoadBalancer": {
             "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
             "Properties": {
-                "Subnets": {
-                    "Ref": "Subnets"
-                },
+                "Subnets": [
+                    {
+                        "Ref": "PublicSubnetA"
+                    },
+                    {
+                        "Ref": "PublicSubnetC"
+                    }
+                ],
                 "SecurityGroups": [
                     {
                         "Ref": "ALBSecurityGroup"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-alb"
+                        }
                     }
                 ]
             }
@@ -634,8 +801,19 @@
                     }
                 ],
                 "VpcId": {
-                    "Ref": "VpcId"
-                }
+                    "Ref": "NewVPC"
+                },
+                "GroupName": {
+                    "Fn::Sub": "${ProjectPrefix}-sg-alb"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-sg-alb"
+                        }
+                    }
+                ]
             }
         },
         "ALBListener": {
@@ -691,7 +869,7 @@
                 "Protocol": "HTTP",
                 "UnhealthyThresholdCount": 5,
                 "VpcId": {
-                    "Ref": "VpcId"
+                    "Ref": "NewVPC"
                 },
                 "TargetGroupAttributes": [
                     {
@@ -705,6 +883,14 @@
                     {
                         "Key": "stickiness.lb_cookie.duration_seconds",
                         "Value": "86400"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-alb-tg-http"
+                        }
                     }
                 ]
             }
@@ -740,16 +926,32 @@
                     }
                 ],
                 "VpcId": {
-                    "Ref": "VpcId"
-                }
+                    "Ref": "NewVPC"
+                },
+                "GroupName": {
+                    "Fn::Sub": "${ProjectPrefix}-sg-web"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-sg-web"
+                        }
+                    }
+                ]
             }
         },
         "WebServerGroup": {
             "Type": "AWS::AutoScaling::AutoScalingGroup",
             "Properties": {
-                "VPCZoneIdentifier": {
-                    "Ref": "Subnets"
-                },
+                "VPCZoneIdentifier": [
+                    {
+                        "Ref": "PublicSubnetA"
+                    },
+                    {
+                        "Ref": "PublicSubnetC"
+                    }
+                ],
                 "LaunchConfigurationName": {
                     "Ref": "LaunchConfig"
                 },
@@ -1013,7 +1215,7 @@
                                             "wp-content/uploads\n",
                                             "mount -t efs ",
                                             {
-                                                "Ref" : "ElasticFileSystem"
+                                                "Ref": "ElasticFileSystem"
                                             },
                                             ":/ /var/www/html/",
                                             {
@@ -1153,18 +1355,57 @@
                         "FromPort": "3306",
                         "ToPort": "3306",
                         "SourceSecurityGroupId": {
-                            "Ref": "WebServerSecurityGroup"
+                            "Fn::GetAtt": [
+                                "WebServerSecurityGroup",
+                                "GroupId"
+                            ]
                         }
                     }
                 ],
                 "VpcId": {
-                    "Ref": "VpcId"
-                }
+                    "Ref": "NewVPC"
+                },
+                "GroupName": {
+                    "Fn::Sub": "${ProjectPrefix}-sg-rds"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-sg-rds"
+                        }
+                    }
+                ]
+            }
+        },
+        "DBSubnetGroup": {
+            "Type": "AWS::RDS::DBSubnetGroup",
+            "Properties": {
+                "DBSubnetGroupDescription": "database subnet group",
+                "SubnetIds": [
+                    {
+                        "Ref": "PublicSubnetA"
+                    },
+                    {
+                        "Ref": "PublicSubnetC"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-rds-subnet-group"
+                        }
+                    }
+                ]
             }
         },
         "DBInstance": {
             "Type": "AWS::RDS::DBInstance",
             "Properties": {
+                "DBInstanceIdentifier": {
+                    "Fn::Sub": "${ProjectPrefix}-rds"
+                },
                 "DBName": {
                     "Ref": "DBName"
                 },
@@ -1185,12 +1426,23 @@
                 "AllocatedStorage": {
                     "Ref": "DBAllocatedStorage"
                 },
+                "DBSubnetGroupName": {
+                    "Ref": "DBSubnetGroup"
+                },
                 "VPCSecurityGroups": [
                     {
                         "Fn::GetAtt": [
                             "DBEC2SecurityGroup",
                             "GroupId"
                         ]
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-rds"
+                        }
                     }
                 ]
             }
@@ -1208,19 +1460,14 @@
                 "ThroughputMode": "bursting"
             }
         },
-        "EFSMountTarget1": {
+        "EFSMountTargetA": {
             "Type": "AWS::EFS::MountTarget",
             "Properties": {
                 "FileSystemId": {
                     "Ref": "ElasticFileSystem"
                 },
                 "SubnetId": {
-                    "Fn::Select" : [
-                        0,
-                        {
-                            "Ref": "Subnets"
-                        }
-                    ]
+                    "Ref": "PublicSubnetA"
                 },
                 "SecurityGroups": [
                     {
@@ -1229,19 +1476,14 @@
                 ]
             }
         },
-        "EFSMountTarget2": {
+        "EFSMountTargetC": {
             "Type": "AWS::EFS::MountTarget",
             "Properties": {
                 "FileSystemId": {
                     "Ref": "ElasticFileSystem"
                 },
                 "SubnetId": {
-                    "Fn::Select" : [
-                        1,
-                        {
-                            "Ref": "Subnets"
-                        }
-                    ]
+                    "Ref": "PublicSubnetC"
                 },
                 "SecurityGroups": [
                     {
@@ -1265,8 +1507,19 @@
                     }
                 ],
                 "VpcId": {
-                    "Ref": "VpcId"
-                }
+                    "Ref": "NewVPC"
+                },
+                "GroupName": {
+                    "Fn::Sub": "${ProjectPrefix}-sg-efs"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-sg-efs"
+                        }
+                    }
+                ]
             }
         }
     },
@@ -1308,12 +1561,18 @@
             "ParameterGroups": [
                 {
                     "Label": {
+                        "default": "Common"
+                    },
+                    "Parameters": [
+                        "ProjectPrefix"
+                    ]
+                },
+                {
+                    "Label": {
                         "default": "EC2 Setting"
                     },
                     "Parameters": [
                         "InstanceType",
-                        "VpcId",
-                        "Subnets",
                         "WebServerCapacity",
                         "WordPressInstallDirectoryName"
                     ]
