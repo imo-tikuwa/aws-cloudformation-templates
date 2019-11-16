@@ -2,6 +2,13 @@
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "AWS CloudFormation Sample Template WordPress_Multi_AZ: WordPress is web software you can use to create a beautiful website or blog. This template installs a highly-available, scalable WordPress deployment using a multi-az Amazon RDS database instance for storage. It demonstrates using the AWS CloudFormation bootstrap scripts to deploy WordPress. **WARNING** This template creates an Amazon EC2 instance, an Application Load Balancer and an Amazon RDS database instance. You will be billed for the AWS resources used if you create a stack from this template.",
     "Parameters": {
+        "ProjectPrefix": {
+            "Description": "Enter 3 to 20 single-byte alphanumeric characters (lower case). Used as a Name tag or identifier.",
+            "Type": "String",
+            "MinLength": "3",
+            "MaxLength": "20",
+            "AllowedPattern": "[a-z][a-z0-9]*"
+        },
         "VpcId": {
             "Type": "AWS::EC2::VPC::Id",
             "Description": "VpcId of your existing Virtual Private Cloud (VPC)",
@@ -643,7 +650,18 @@
                 ],
                 "VpcId": {
                     "Ref": "VpcId"
-                }
+                },
+                "GroupName": {
+                    "Fn::Sub": "${ProjectPrefix}-sg-alb"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-sg-alb"
+                        }
+                    }
+                ]
             }
         },
         "ALBListener": {
@@ -749,7 +767,18 @@
                 ],
                 "VpcId": {
                     "Ref": "VpcId"
-                }
+                },
+                "GroupName": {
+                    "Fn::Sub": "${ProjectPrefix}-sg-web"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-sg-web"
+                        }
+                    }
+                ]
             }
         },
         "WebServerGroup": {
@@ -1172,7 +1201,18 @@
                 ],
                 "VpcId": {
                     "Ref": "VpcId"
-                }
+                },
+                "GroupName": {
+                    "Fn::Sub": "${ProjectPrefix}-sg-rds"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-sg-rds"
+                        }
+                    }
+                ]
             }
         },
         "DBInstance": {
@@ -1204,6 +1244,14 @@
                             "DBEC2SecurityGroup",
                             "GroupId"
                         ]
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${ProjectPrefix}-rds"
+                        }
                     }
                 ]
             }
@@ -1377,6 +1425,11 @@
     "Metadata": {
         "AWS::CloudFormation::Interface": {
             "ParameterGroups": [
+                {
+                    "Parameters": [
+                        "ProjectPrefix"
+                    ]
+                },
                 {
                     "Label": {
                         "default": "EC2 Setting"
