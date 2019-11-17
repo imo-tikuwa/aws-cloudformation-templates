@@ -1082,9 +1082,13 @@
                                                 "Ref": "WordPressInstallDirectoryName"
                                             },
                                             "\"\n",
+                                            "sudo -u apache /usr/local/bin/wp core language install ja --activate\n",
+                                            "sudo -u apache /usr/local/bin/wp plugin install wp-multibyte-patch --activate\n",
+                                            "sudo -u apache /usr/local/bin/wp option update timezone_string $(sudo -u apache /usr/local/bin/wp eval \"echo _x( '0', 'default GMT offset or timezone string' );\")\n",
+                                            "sudo -u apache /usr/local/bin/wp option update date_format $(sudo -u apache /usr/local/bin/wp eval \"echo __( 'M jS Y' );\")\n",
                                             "\n",
                                             "sudo -u apache /usr/local/bin/wp plugin uninstall akismet hello\n",
-                                            "sudo -u apache /usr/local/bin/wp plugin install pubsubhubbub wp-multibyte-patch wp-ban wp-add-mime-types --activate\n",
+                                            "sudo -u apache /usr/local/bin/wp plugin install pubsubhubbub wp-ban wp-add-mime-types --activate\n",
                                             {
                                                 "Fn::If": [
                                                     "WordPressPluginInstallSiteOptimizerIsTrue",
