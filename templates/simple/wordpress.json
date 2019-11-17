@@ -1093,7 +1093,7 @@
                                                             "",
                                                             [
                                                                 "sudo -u apache /usr/local/bin/wp plugin install wp-sitemanager --activate\n",
-                                                                "sed -i -e \"/^define('WP_DEBUG', false);$/a \\n\\/** for wp-sitemanager *\\/\\ndefine('WP_CACHE', true);\" wp-config.php\n"
+                                                                "sed -i -e \"/define( 'WP_DEBUG', false );/a //\\n/** for wp-sitemanager */\\ndefine( 'WP_CACHE', true );\" wp-config.php\n"
                                                             ]
                                                         ]
                                                     },
