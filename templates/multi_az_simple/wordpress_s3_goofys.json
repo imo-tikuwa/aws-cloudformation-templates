@@ -1017,7 +1017,7 @@
                                             "# salt change\n",
                                             "SALTS=$(curl -s https://api.wordpress.org/secret-key/1.1/salt/)\n",
                                             "while read -r SALT; do\n",
-                                            "SEARCH=\"define('$(echo \"$SALT\" | cut -d \"'\" -f 2)\"\n",
+                                            "SEARCH=\"define( '$(echo \"$SALT\" | cut -d \"'\" -f 2)\"\n",
                                             "REPLACE=$(echo \"$SALT\" | cut -d \"'\" -f 4)\n",
                                             "sed -i \"/^$SEARCH/s/put your unique phrase here/$(echo $REPLACE | sed -e 's/\\\\/\\\\\\\\/g' -e 's/\\//\\\\\\//g' -e 's/&/\\\\\\&/g')/\" wp-config.php\n",
                                             "done <<< \"$SALTS\"\n",

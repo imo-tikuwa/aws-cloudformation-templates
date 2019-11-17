@@ -18,11 +18,6 @@
                 "standard"
             ]
         },
-        "WordPressInstallDirectoryName": {
-            "Description": "enter WordPress install directory name. If not entered, it will be installed directly under /var/www/html",
-            "Type": "String",
-            "Default": "wordpress"
-        },
         "KeyName": {
             "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances",
             "Type": "AWS::EC2::KeyPair::KeyName",
@@ -134,6 +129,140 @@
             "MaxLength": "41",
             "AllowedPattern": "[a-zA-Z0-9]*",
             "ConstraintDescription": "must contain only alphanumeric characters."
+        },
+        "WordPressInstallDirectoryName": {
+            "Description": "enter WordPress install directory name. If not entered, it will be installed directly under /var/www/html",
+            "Type": "String",
+            "Default": "wordpress"
+        },
+        "WordPressSiteName": {
+            "Description": "enter WordPress site name.",
+            "Type": "String",
+            "AllowedPattern": "[a-zA-Z0-9 ]*",
+            "ConstraintDescription": "site name must contain only alphanumeric characters."
+        },
+        "WordPressAdminUser": {
+            "Description": "enter WordPress admin user. (min:4, max:32, alphanumeric)",
+            "Type": "String",
+            "MinLength": "4",
+            "MaxLength": "32",
+            "AllowedPattern": "[a-zA-Z0-9]*",
+            "ConstraintDescription": "admin user must contain only alphanumeric characters."
+        },
+        "WordPressAdminPass": {
+            "NoEcho": "true",
+            "Description": "enter WordPress admin pass. (min:8, max:32, alphanumeric)",
+            "Type": "String",
+            "MinLength": "8",
+            "MaxLength": "32",
+            "AllowedPattern": "[a-zA-Z0-9]*",
+            "ConstraintDescription": "admin pass must contain only alphanumeric characters."
+        },
+        "WordPressAdminEmail": {
+            "Description": "enter WordPress admin email.",
+            "Type": "String",
+            "AllowedPattern": "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$",
+            "ConstraintDescription": "admin mail address format is invalid."
+        },
+        "WordPressPluginInstallSiteOptimizer": {
+            "Default": "true",
+            "Description": "install wordpress wp-sitemanager plugin.",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "ConstraintDescription": "must be either true or false."
+        },
+        "WordPressPluginInstallImageOptimizer": {
+            "Default": "false",
+            "Description": "install wordpress ewww-image-optimizer plugin.",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "ConstraintDescription": "must be either true or false."
+        },
+        "WordPressPluginInstallSiteMap": {
+            "Default": "true",
+            "Description": "install wordpress google-sitemap-generator plugin.",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "ConstraintDescription": "must be either true or false."
+        },
+        "WordPressPluginInstallBackup": {
+            "Default": "false",
+            "Description": "install wordpress all-in-one-wp-migration plugin.",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "ConstraintDescription": "must be either true or false."
+        },
+        "WordPressPluginInstallClassicEditor": {
+            "Default": "false",
+            "Description": "install wordpress classic-editor and tinymce-advanced plugin.",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "ConstraintDescription": "must be either true or false."
+        },
+        "WordPressPluginInstallDownloadManager": {
+            "Default": "false",
+            "Description": "install wordpress download-manager plugin.",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "ConstraintDescription": "must be either true or false."
+        },
+        "WordPressPluginInstallLightBox": {
+            "Default": "true",
+            "Description": "install wordpress fancybox-for-wordpress plugin.",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "ConstraintDescription": "must be either true or false."
+        },
+        "WordPressPluginInstallLazyLoad": {
+            "Default": "false",
+            "Description": "install wordpress lazy-load plugin.",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "ConstraintDescription": "must be either true or false."
+        },
+        "WordPressPluginInstallCodeHighlighter": {
+            "Default": "false",
+            "Description": "install wordpress enlighter plugin.",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "ConstraintDescription": "must be either true or false."
+        },
+        "WordPressPluginInstallAccessAnalysis": {
+            "Default": "true",
+            "Description": "install wordpress newstatpress plugin.",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "ConstraintDescription": "must be either true or false."
         }
     },
     "Conditions": {
@@ -151,6 +280,86 @@
                     "Ref": "WordPressInstallDirectoryName"
                 },
                 "wordpress"
+            ]
+        },
+        "WordPressPluginInstallSiteOptimizerIsTrue": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressPluginInstallSiteOptimizer"
+                },
+                "true"
+            ]
+        },
+        "WordPressPluginInstallImageOptimizerIsTrue": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressPluginInstallImageOptimizer"
+                },
+                "true"
+            ]
+        },
+        "WordPressPluginInstallSiteMapIsTrue": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressPluginInstallSiteMap"
+                },
+                "true"
+            ]
+        },
+        "WordPressPluginInstallBackupIsTrue": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressPluginInstallBackup"
+                },
+                "true"
+            ]
+        },
+        "WordPressPluginInstallClassicEditorIsTrue": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressPluginInstallClassicEditor"
+                },
+                "true"
+            ]
+        },
+        "WordPressPluginInstallDownloadManagerIsTrue": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressPluginInstallDownloadManager"
+                },
+                "true"
+            ]
+        },
+        "WordPressPluginInstallLightBoxIsTrue": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressPluginInstallLightBox"
+                },
+                "true"
+            ]
+        },
+        "WordPressPluginInstallLazyLoadIsTrue": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressPluginInstallLazyLoad"
+                },
+                "true"
+            ]
+        },
+        "WordPressPluginInstallCodeHighlighterIsTrue": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressPluginInstallCodeHighlighter"
+                },
+                "true"
+            ]
+        },
+        "WordPressPluginInstallAccessAnalysisIsTrue": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressPluginInstallAccessAnalysis"
+                },
+                "true"
             ]
         }
     },
@@ -586,6 +795,17 @@
                             "Ref": "AccessAllowIP"
                         }
                     }
+                ],
+                "GroupName": {
+                    "Fn::Sub": "${AWS::StackName}-sg"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${AWS::StackName}-sg"
+                        }
+                    }
                 ]
             }
         },
@@ -824,13 +1044,210 @@
                                             "# salt change\n",
                                             "SALTS=$(curl -s https://api.wordpress.org/secret-key/1.1/salt/)\n",
                                             "while read -r SALT; do\n",
-                                            "SEARCH=\"define('$(echo \"$SALT\" | cut -d \"'\" -f 2)\"\n",
+                                            "SEARCH=\"define( '$(echo \"$SALT\" | cut -d \"'\" -f 2)\"\n",
                                             "REPLACE=$(echo \"$SALT\" | cut -d \"'\" -f 4)\n",
                                             "sed -i \"/^$SEARCH/s/put your unique phrase here/$(echo $REPLACE | sed -e 's/\\\\/\\\\\\\\/g' -e 's/\\//\\\\\\//g' -e 's/&/\\\\\\&/g')/\" wp-config.php\n",
                                             "done <<< \"$SALTS\"\n",
                                             "\n",
                                             "# apache setting\n",
-                                            "chown -R apache: .\n"
+                                            "chown -R apache: .\n",
+                                            "\n",
+                                            "# wp-cli install and setting\n",
+                                            "mkdir -p /var/www/.wp-cli\n",
+                                            "chown apache: /var/www/.wp-cli\n",
+                                            "\n",
+                                            "curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar\n",
+                                            "mv wp-cli.phar /usr/local/bin/wp\n",
+                                            "echo export PATH='/usr/local/bin:$PATH' >> ~/.bashrc\n",
+                                            "chmod +x /usr/local/bin/wp\n",
+                                            "\n",
+                                            "sudo -u apache /usr/local/bin/wp core install --title='",
+                                            {
+                                                "Ref": "WordPressSiteName"
+                                            },
+                                            "' --admin_user='",
+                                            {
+                                                "Ref": "WordPressAdminUser"
+                                            },
+                                            "' --admin_password='",
+                                            {
+                                                "Ref": "WordPressAdminPass"
+                                            },
+                                            "' --admin_email='",
+                                            {
+                                                "Ref": "WordPressAdminEmail"
+                                            },
+                                            "' --url=\"https://$(curl -s http://169.254.169.254/latest/meta-data/public-hostname)/",
+                                            {
+                                                "Ref": "WordPressInstallDirectoryName"
+                                            },
+                                            "\"\n",
+                                            "\n",
+                                            "sudo -u apache /usr/local/bin/wp plugin uninstall akismet hello\n",
+                                            "sudo -u apache /usr/local/bin/wp plugin install pubsubhubbub wp-multibyte-patch wp-ban wp-add-mime-types --activate\n",
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressPluginInstallSiteOptimizerIsTrue",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                "sudo -u apache /usr/local/bin/wp plugin install wp-sitemanager --activate\n",
+                                                                "sed -i -e \"/^define('WP_DEBUG', false);$/a \\n\\/** for wp-sitemanager *\\/\\ndefine('WP_CACHE', true);\" wp-config.php\n"
+                                                            ]
+                                                        ]
+                                                    },
+                                                    {
+                                                        "Ref": "AWS::NoValue"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressPluginInstallImageOptimizerIsTrue",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                "yum -y install libjpeg optipng gifsicle libwebp-tools\n",
+                                                                "sudo -u apache /usr/local/bin/wp plugin install ewww-image-optimizer --activate\n"
+                                                            ]
+                                                        ]
+                                                    },
+                                                    {
+                                                        "Ref": "AWS::NoValue"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressPluginInstallSiteMapIsTrue",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                "sudo -u apache /usr/local/bin/wp plugin install google-sitemap-generator --activate\n"
+                                                            ]
+                                                        ]
+                                                    },
+                                                    {
+                                                        "Ref": "AWS::NoValue"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressPluginInstallBackupIsTrue",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                "sudo -u apache /usr/local/bin/wp plugin install all-in-one-wp-migration --activate\n"
+                                                            ]
+                                                        ]
+                                                    },
+                                                    {
+                                                        "Ref": "AWS::NoValue"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressPluginInstallClassicEditorIsTrue",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                "sudo -u apache /usr/local/bin/wp plugin install classic-editor tinymce-advanced --activate\n"
+                                                            ]
+                                                        ]
+                                                    },
+                                                    {
+                                                        "Ref": "AWS::NoValue"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressPluginInstallDownloadManagerIsTrue",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                "sudo -u apache /usr/local/bin/wp plugin install download-manager --activate\n"
+                                                            ]
+                                                        ]
+                                                    },
+                                                    {
+                                                        "Ref": "AWS::NoValue"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressPluginInstallLightBoxIsTrue",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                "sudo -u apache /usr/local/bin/wp plugin install fancybox-for-wordpress --activate\n"
+                                                            ]
+                                                        ]
+                                                    },
+                                                    {
+                                                        "Ref": "AWS::NoValue"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressPluginInstallLazyLoadIsTrue",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                "sudo -u apache /usr/local/bin/wp plugin install lazy-load --activate\n"
+                                                            ]
+                                                        ]
+                                                    },
+                                                    {
+                                                        "Ref": "AWS::NoValue"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressPluginInstallCodeHighlighterIsTrue",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                "sudo -u apache /usr/local/bin/wp plugin install enlighter --activate\n"
+                                                            ]
+                                                        ]
+                                                    },
+                                                    {
+                                                        "Ref": "AWS::NoValue"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressPluginInstallAccessAnalysisIsTrue",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                "sudo -u apache /usr/local/bin/wp plugin install newstatpress --activate\n"
+                                                            ]
+                                                        ]
+                                                    },
+                                                    {
+                                                        "Ref": "AWS::NoValue"
+                                                    }
+                                                ]
+                                            },
+                                            "sudo -u apache /usr/local/bin/wp core language update\n"
                                         ]
                                     ]
                                 },
@@ -1043,6 +1460,21 @@
             "Value": {
                 "Ref": "DBRootPassword"
             }
+        },
+        "WordPressAdminUser": {
+            "Value": {
+                "Ref": "WordPressAdminUser"
+            }
+        },
+        "WordPressAdminPass": {
+            "Value": {
+                "Ref": "WordPressAdminPass"
+            }
+        },
+        "WordPressAdminEmail": {
+            "Value": {
+                "Ref": "WordPressAdminEmail"
+            }
         }
     },
     "Metadata": {
@@ -1056,7 +1488,8 @@
                         "InstanceType",
                         "WebServerVolumeType",
                         "WebServerVolumeSize",
-                        "WordPressInstallDirectoryName"
+                        "AccessAllowIP",
+                        "KeyName"
                     ]
                 },
                 {
@@ -1072,11 +1505,31 @@
                 },
                 {
                     "Label": {
-                        "default": "Other Setting"
+                        "default": "WordPress General Setting"
                     },
                     "Parameters": [
-                        "AccessAllowIP",
-                        "KeyName"
+                        "WordPressInstallDirectoryName",
+                        "WordPressSiteName",
+                        "WordPressAdminUser",
+                        "WordPressAdminPass",
+                        "WordPressAdminEmail"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "WordPress Plugin Setting"
+                    },
+                    "Parameters": [
+                        "WordPressPluginInstallSiteOptimizer",
+                        "WordPressPluginInstallImageOptimizer",
+                        "WordPressPluginInstallSiteMap",
+                        "WordPressPluginInstallBackup",
+                        "WordPressPluginInstallClassicEditor",
+                        "WordPressPluginInstallDownloadManager",
+                        "WordPressPluginInstallLightBox",
+                        "WordPressPluginInstallLazyLoad",
+                        "WordPressPluginInstallCodeHighlighter",
+                        "WordPressPluginInstallAccessAnalysis"
                     ]
                 }
             ]
