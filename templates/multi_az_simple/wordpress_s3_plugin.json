@@ -1110,11 +1110,11 @@
                                                 ]
                                             },
                                             "' );\" wp-config.php\n",
-                                            "sudo -u apache /usr/local/bin/wp option update tantan_wordpress_s3 '{\"bucket\": \"",
+                                            "sudo -u apache /usr/local/bin/wp option patch update tantan_wordpress_s3 bucket ",
                                             {
                                                 "Ref": "S3BucketName"
                                             },
-                                            "\", \"copy-to-s3\": \"1\", \"force-https\": false, \"manual_bucket\": true, \"post_meta_version\": 8, \"region\": \"ap-northeast-1\", \"serve-from-s3\": \"1\"}' --format=json\n"
+                                            "\n"
                                         ]
                                     ]
                                 },
