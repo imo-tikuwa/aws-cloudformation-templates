@@ -1110,11 +1110,18 @@
                                                 ]
                                             },
                                             "' );\" wp-config.php\n",
-                                            "sudo -u apache /usr/local/bin/wp option patch update tantan_wordpress_s3 bucket ",
+                                            "sudo -u apache /usr/local/bin/wp option add tantan_wordpress_s3 '{}' --format=json\n",
+                                            "sudo -u apache /usr/local/bin/wp option patch insert tantan_wordpress_s3 bucket ",
                                             {
                                                 "Ref": "S3BucketName"
                                             },
-                                            "\n"
+                                            "\n",
+                                            "sudo -u apache /usr/local/bin/wp option patch insert tantan_wordpress_s3 copy-to-s3 1\n",
+                                            "sudo -u apache /usr/local/bin/wp option patch insert tantan_wordpress_s3 force-https false\n",
+                                            "sudo -u apache /usr/local/bin/wp option patch insert tantan_wordpress_s3 manual_bucket true\n",
+                                            "sudo -u apache /usr/local/bin/wp option patch insert tantan_wordpress_s3 post_meta_version 8\n",
+                                            "sudo -u apache /usr/local/bin/wp option patch insert tantan_wordpress_s3 region ap-northeast-1\n",
+                                            "sudo -u apache /usr/local/bin/wp option patch insert tantan_wordpress_s3 serve-from-s3 1\n"
                                         ]
                                     ]
                                 },
