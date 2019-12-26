@@ -1,0 +1,699 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS CloudFormation Sample Template WordPress_Single_Instance: WordPress is web software you can use to create a beautiful website or blog. This template installs WordPress with a local MySQL database for storage. It demonstrates using the AWS CloudFormation bootstrap scripts to deploy WordPress. **WARNING** This template creates an Amazon EC2 instance. You will be billed for the AWS resources used if you create a stack from this template.",
+    "Parameters": {
+        "WebServerVolumeSize": {
+            "Description": "input EC2 volume size(min:8GB, max:1024GB)",
+            "Type": "Number",
+            "MinValue": "8",
+            "MaxValue": "1024",
+            "Default": "8"
+        },
+        "WebServerVolumeType": {
+            "Description": "select EC2 volume type (gp2:SSD, standard:HDD)",
+            "Type": "String",
+            "Default": "standard",
+            "AllowedValues": [
+                "gp2",
+                "standard"
+            ]
+        },
+        "WordPressInstallDirectoryName": {
+            "Description": "enter WordPress install directory name. If not entered, it will be installed directly under /var/www/html",
+            "Type": "String",
+            "Default": "wordpress"
+        },
+        "KeyName": {
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+        },
+        "InstanceType": {
+            "Description": "WebServer EC2 instance type",
+            "Type": "String",
+            "Default": "t2.small",
+            "AllowedValues": [
+                "t2.nano",
+                "t2.micro",
+                "t2.small",
+                "t2.medium",
+                "t2.large",
+                "m4.large",
+                "m4.xlarge",
+                "m4.2xlarge",
+                "m4.4xlarge",
+                "m4.10xlarge"
+            ],
+            "ConstraintDescription": "must be a valid EC2 instance type."
+        },
+        "AccessAllowIP": {
+            "Description": "The IP address range that can be used to SSH and HTTP to the EC2 instances",
+            "Type": "String",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "Default": "0.0.0.0/0",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+        },
+        "DBName": {
+            "Default": "wordpressdb",
+            "Description": "The WordPress database name",
+            "Type": "String",
+            "MinLength": "1",
+            "MaxLength": "64",
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters."
+        },
+        "DBUser": {
+            "NoEcho": "true",
+            "Description": "The WordPress database admin account username",
+            "Type": "String",
+            "MinLength": "1",
+            "MaxLength": "16",
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters."
+        },
+        "DBPassword": {
+            "NoEcho": "true",
+            "Description": "The WordPress database admin account password",
+            "Type": "String",
+            "MinLength": "8",
+            "MaxLength": "41",
+            "AllowedPattern": "[a-zA-Z0-9]*",
+            "ConstraintDescription": "must contain only alphanumeric characters."
+        },
+        "DBRootPassword": {
+            "NoEcho": "true",
+            "Description": "MySQL root password",
+            "Type": "String",
+            "MinLength": "8",
+            "MaxLength": "41",
+            "AllowedPattern": "[a-zA-Z0-9]*",
+            "ConstraintDescription": "must contain only alphanumeric characters."
+        }
+    },
+    "Conditions": {
+        "WordPressInstallDirectoryNameIsEmpty": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressInstallDirectoryName"
+                },
+                ""
+            ]
+        },
+        "WordPressInstallDirectoryNameIsDefault": {
+            "Fn::Equals": [
+                {
+                    "Ref": "WordPressInstallDirectoryName"
+                },
+                "wordpress"
+            ]
+        }
+    },
+    "Mappings": {
+        "AWSInstanceType2Arch": {
+            "t2.nano": {
+                "Arch": "HVM64"
+            },
+            "t2.micro": {
+                "Arch": "HVM64"
+            },
+            "t2.small": {
+                "Arch": "HVM64"
+            },
+            "t2.medium": {
+                "Arch": "HVM64"
+            },
+            "t2.large": {
+                "Arch": "HVM64"
+            },
+            "m4.large": {
+                "Arch": "HVM64"
+            },
+            "m4.xlarge": {
+                "Arch": "HVM64"
+            },
+            "m4.2xlarge": {
+                "Arch": "HVM64"
+            },
+            "m4.4xlarge": {
+                "Arch": "HVM64"
+            },
+            "m4.10xlarge": {
+                "Arch": "HVM64"
+            }
+        },
+        "AWSRegionArch2AMI": {
+            "ap-northeast-1": {
+                "HVM64": "ami-068a6cefc24c301d2"
+            }
+        }
+    },
+    "Resources": {
+        "WebServerSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "SecurityGroup created by CloudFormation",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "80",
+                        "ToPort": "80",
+                        "CidrIp": {
+                            "Ref": "AccessAllowIP"
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "443",
+                        "ToPort": "443",
+                        "CidrIp": {
+                            "Ref": "AccessAllowIP"
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": {
+                            "Ref": "AccessAllowIP"
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${AWS::StackName}-sg"
+                        }
+                    }
+                ]
+            }
+        },
+        "WebServer": {
+            "Type": "AWS::EC2::Instance",
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "configSets": {
+                        "wordpress_install": [
+                            "install_cfn",
+                            "init_jp_setting",
+                            "setup_apache_mysql_php",
+                            "install_wordpress",
+                            "configure_wordpress"
+                        ]
+                    },
+                    "install_cfn": {
+                        "files": {
+                            "/etc/cfn/cfn-hup.conf": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "[main]\n",
+                                            "stack=",
+                                            {
+                                                "Ref": "AWS::StackId"
+                                            },
+                                            "\n",
+                                            "region=",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            "\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000400",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "[cfn-auto-reloader-hook]\n",
+                                            "triggers=post.update\n",
+                                            "path=Resources.WebServer.Metadata.AWS::CloudFormation::Init\n",
+                                            "action=/opt/aws/bin/cfn-init -v ",
+                                            "         --stack ",
+                                            {
+                                                "Ref": "AWS::StackName"
+                                            },
+                                            "         --resource WebServer ",
+                                            "         --configsets wordpress_install ",
+                                            "         --region ",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            "\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000400",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        },
+                        "services": {
+                            "sysvinit": {
+                                "cfn-hup": {
+                                    "enabled": "true",
+                                    "ensureRunning": "true",
+                                    "files": [
+                                        "/etc/cfn/cfn-hup.conf",
+                                        "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "init_jp_setting": {
+                        "files": {
+                            "/tmp/jp-setting": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "yum -y update\n",
+                                            "sed -i \"s/ZONE=\\\"UTC\\\"/ZONE=\\\"Asia\\/Tokyo\\\"/\" /etc/sysconfig/clock\n",
+                                            "/bin/cp -f /usr/share/zoneinfo/Japan /etc/localtime\n",
+                                            "sed -i \"s/en_US\\.UTF-8/ja_JP\\.UTF-8/\" /etc/sysconfig/i18n\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000500",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        },
+                        "commands": {
+                            "01_execute_init_jp_setting": {
+                                "command": "/tmp/jp-setting",
+                                "cwd": "~"
+                            }
+                        }
+                    },
+                    "setup_apache_mysql_php": {
+                        "files": {
+                            "/tmp/setup-lamp": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "amazon-linux-extras install -y lamp-mariadb10.2-php7.2\n",
+                                            "yum install -y httpd mod_ssl mariadb-server\n",
+                                            "\n",
+                                            "systemctl start httpd\n",
+                                            "systemctl enable httpd\n",
+                                            "systemctl start mariadb\n",
+                                            "systemctl enable mariadb\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000500",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        },
+                        "commands": {
+                            "01_install_apache_mysql_php": {
+                                "command": "/tmp/setup-lamp",
+                                "cwd": "~"
+                            }
+                        }
+                    },
+                    "install_wordpress": {
+                        "sources": {
+                            "/var/www/html": "https://ja.wordpress.org/latest-ja.tar.gz"
+                        },
+                        "files": {
+                            "/tmp/setup.mysql": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "CREATE DATABASE ",
+                                            {
+                                                "Ref": "DBName"
+                                            },
+                                            ";\n",
+                                            "CREATE USER '",
+                                            {
+                                                "Ref": "DBUser"
+                                            },
+                                            "'@'localhost' IDENTIFIED BY '",
+                                            {
+                                                "Ref": "DBPassword"
+                                            },
+                                            "';\n",
+                                            "GRANT ALL ON ",
+                                            {
+                                                "Ref": "DBName"
+                                            },
+                                            ".* TO '",
+                                            {
+                                                "Ref": "DBUser"
+                                            },
+                                            "'@'localhost';\n",
+                                            "FLUSH PRIVILEGES;\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000400",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/tmp/create-wp-config": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "cd /var/www/html\n",
+                                            "\n",
+                                            "# wordpress move\n",
+                                            {
+                                                "Fn::If": [
+                                                    "WordPressInstallDirectoryNameIsEmpty",
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                "mv wordpress/* ./\n",
+                                                                "rm -fR wordpress/\n"
+                                                            ]
+                                                        ]
+                                                    },
+                                                    {
+                                                        "Fn::Join": [
+                                                            "",
+                                                            [
+                                                                {
+                                                                    "Fn::If": [
+                                                                        "WordPressInstallDirectoryNameIsDefault",
+                                                                        "",
+                                                                        {
+                                                                            "Fn::Join": [
+                                                                                "",
+                                                                                [
+                                                                                    "mv wordpress ",
+                                                                                    {
+                                                                                        "Ref": "WordPressInstallDirectoryName"
+                                                                                    },
+                                                                                    "\n"
+                                                                                ]
+                                                                            ]
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "cd ",
+                                                                {
+                                                                    "Ref": "WordPressInstallDirectoryName"
+                                                                },
+                                                                "\n"
+                                                            ]
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "\n",
+                                            "# create wp-config.php\n",
+                                            "cp wp-config-sample.php wp-config.php\n",
+                                            "sed -i \"s/'database_name_here'/'",
+                                            {
+                                                "Ref": "DBName"
+                                            },
+                                            "'/g\" wp-config.php\n",
+                                            "sed -i \"s/'username_here'/'",
+                                            {
+                                                "Ref": "DBUser"
+                                            },
+                                            "'/g\" wp-config.php\n",
+                                            "sed -i \"s/'password_here'/'",
+                                            {
+                                                "Ref": "DBPassword"
+                                            },
+                                            "'/g\" wp-config.php\n",
+                                            "\n",
+                                            "# salt change\n",
+                                            "SALTS=$(curl -s https://api.wordpress.org/secret-key/1.1/salt/)\n",
+                                            "while read -r SALT; do\n",
+                                            "SEARCH=\"define('$(echo \"$SALT\" | cut -d \"'\" -f 2)\"\n",
+                                            "REPLACE=$(echo \"$SALT\" | cut -d \"'\" -f 4)\n",
+                                            "sed -i \"/^$SEARCH/s/put your unique phrase here/$(echo $REPLACE | sed -e 's/\\\\/\\\\\\\\/g' -e 's/\\//\\\\\\//g' -e 's/&/\\\\\\&/g')/\" wp-config.php\n",
+                                            "done <<< \"$SALTS\"\n",
+                                            "\n",
+                                            "# apache setting\n",
+                                            "chown -R apache: .\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000500",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        }
+                    },
+                    "configure_wordpress": {
+                        "commands": {
+                            "01_set_mysql_root_password": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "mysqladmin -u root password '",
+                                            {
+                                                "Ref": "DBRootPassword"
+                                            },
+                                            "'"
+                                        ]
+                                    ]
+                                },
+                                "test": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "$(mysql ",
+                                            {
+                                                "Ref": "DBName"
+                                            },
+                                            " -u root --password='",
+                                            {
+                                                "Ref": "DBRootPassword"
+                                            },
+                                            "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "02_create_database": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "mysql -u root --password='",
+                                            {
+                                                "Ref": "DBRootPassword"
+                                            },
+                                            "' < /tmp/setup.mysql"
+                                        ]
+                                    ]
+                                },
+                                "test": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "$(mysql ",
+                                            {
+                                                "Ref": "DBName"
+                                            },
+                                            " -u root --password='",
+                                            {
+                                                "Ref": "DBRootPassword"
+                                            },
+                                            "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "03_configure_wordpress": {
+                                "command": "/tmp/create-wp-config",
+                                "cwd": "~"
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties": {
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": "true",
+                            "VolumeSize": {
+                                "Ref": "WebServerVolumeSize"
+                            },
+                            "VolumeType": {
+                                "Ref": "WebServerVolumeType"
+                            }
+                        }
+                    }
+                ],
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "AWSRegionArch2AMI",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        {
+                            "Fn::FindInMap": [
+                                "AWSInstanceType2Arch",
+                                {
+                                    "Ref": "InstanceType"
+                                },
+                                "Arch"
+                            ]
+                        }
+                    ]
+                },
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "SecurityGroups": [
+                    {
+                        "Ref": "WebServerSecurityGroup"
+                    }
+                ],
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${AWS::StackName}"
+                        }
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash -xe\n",
+                                "yum update -y aws-cfn-bootstrap\n",
+                                "/opt/aws/bin/cfn-init -v ",
+                                "         --stack ",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                "         --resource WebServer ",
+                                "         --configsets wordpress_install ",
+                                "         --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n",
+                                "/opt/aws/bin/cfn-signal -e $? ",
+                                "         --stack ",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                "         --resource WebServer ",
+                                "         --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "CreationPolicy": {
+                "ResourceSignal": {
+                    "Timeout": "PT15M"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "WebsiteURL": {
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "https://",
+                        {
+                            "Fn::GetAtt": [
+                                "WebServer",
+                                "PublicDnsName"
+                            ]
+                        },
+                        "/",
+                        {
+                            "Ref": "WordPressInstallDirectoryName"
+                        }
+                    ]
+                ]
+            },
+            "Description": "WordPress Website"
+        },
+        "DBUser": {
+            "Value": {
+                "Ref": "DBUser"
+            }
+        },
+        "DBPassword": {
+            "Value": {
+                "Ref": "DBPassword"
+            }
+        },
+        "DBRootPassword": {
+            "Value": {
+                "Ref": "DBRootPassword"
+            }
+        }
+    },
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Instance Setting"
+                    },
+                    "Parameters": [
+                        "InstanceType",
+                        "WebServerVolumeType",
+                        "WebServerVolumeSize",
+                        "WordPressInstallDirectoryName"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Database Setting"
+                    },
+                    "Parameters": [
+                        "DBName",
+                        "DBUser",
+                        "DBPassword",
+                        "DBRootPassword"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Other Setting"
+                    },
+                    "Parameters": [
+                        "AccessAllowIP",
+                        "KeyName"
+                    ]
+                }
+            ]
+        }
+    }
+}
