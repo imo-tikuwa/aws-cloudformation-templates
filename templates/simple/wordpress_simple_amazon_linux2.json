@@ -152,6 +152,7 @@
     "Resources": {
         "WebServerSecurityGroup": {
             "Type": "AWS::EC2::SecurityGroup",
+            "DeletionPolicy": "Retain",
             "Properties": {
                 "GroupDescription": "SecurityGroup created by CloudFormation",
                 "SecurityGroupIngress": [
@@ -192,6 +193,7 @@
         },
         "WebServer": {
             "Type": "AWS::EC2::Instance",
+            "DeletionPolicy": "Retain",
             "Metadata": {
                 "AWS::CloudFormation::Init": {
                     "configSets": {
@@ -280,7 +282,7 @@
                                             "yum -y update\n",
                                             "sed -i \"s/ZONE=\\\"UTC\\\"/ZONE=\\\"Asia\\/Tokyo\\\"/\" /etc/sysconfig/clock\n",
                                             "/bin/cp -f /usr/share/zoneinfo/Japan /etc/localtime\n",
-                                            "sed -i \"s/en_US\\.UTF-8/ja_JP\\.UTF-8/\" /etc/sysconfig/i18n\n"
+                                            "localectl set-locale LANG=ja_JP.UTF-8\n"
                                         ]
                                     ]
                                 },
@@ -305,12 +307,14 @@
                                         [
                                             "#!/bin/bash -xe\n",
                                             "amazon-linux-extras install -y lamp-mariadb10.2-php7.2\n",
+                                            "yum install -y php-cli php-common php-devel php-fpm php-gd php-mysqlnd php-mbstring php-pdo php-xml\n",
                                             "yum install -y httpd mod_ssl mariadb-server\n",
                                             "\n",
                                             "systemctl start httpd\n",
                                             "systemctl enable httpd\n",
                                             "systemctl start mariadb\n",
-                                            "systemctl enable mariadb\n"
+                                            "systemctl enable mariadb\n",
+                                            "systemctl restart php-fpm\n"
                                         ]
                                     ]
                                 },
@@ -442,7 +446,7 @@
                                             "# salt change\n",
                                             "SALTS=$(curl -s https://api.wordpress.org/secret-key/1.1/salt/)\n",
                                             "while read -r SALT; do\n",
-                                            "SEARCH=\"define('$(echo \"$SALT\" | cut -d \"'\" -f 2)\"\n",
+                                            "SEARCH=\"define( '$(echo \"$SALT\" | cut -d \"'\" -f 2)\"\n",
                                             "REPLACE=$(echo \"$SALT\" | cut -d \"'\" -f 4)\n",
                                             "sed -i \"/^$SEARCH/s/put your unique phrase here/$(echo $REPLACE | sed -e 's/\\\\/\\\\\\\\/g' -e 's/\\//\\\\\\//g' -e 's/&/\\\\\\&/g')/\" wp-config.php\n",
                                             "done <<< \"$SALTS\"\n",
